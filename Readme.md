@@ -4,4 +4,4 @@ Front End (TBA)
 ---------------
 Backend
 -------
-Express based user authentication backend system.
+Express based user authentication backend system powered by mongodb.
