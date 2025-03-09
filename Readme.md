@@ -1,4 +1,4 @@
-FUllstack Application
+Fullstack Application
 ---------------------
 Front End (TBA)
 ---------------
