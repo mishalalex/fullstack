@@ -1,19 +1,16 @@
+// we need to use mongoose ODM and dotenv
 import mongoose from "mongoose";
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 
-// re-importing dotenv package just in case
+// initializing dotenv package
 dotenv.config();
 
-// using the monegoose.connect command, we are trying to connect to db by fetching the connection url from dotenv file
+// mongodb atlas connection call
 const db = () => {
     mongoose
         .connect(process.env.MONGODB_URL)
-        .then(() => {
-            console.log("Connected to mongodb successfully!")
-        })
-        .catch((err) => {
-            console.log(`Error connecting to mongodb: ${err}`)
-        });
+        .then(() => console.log("MongoDB Atlas connection successful"))
+        .catch((err) => console.log(`Error conncting to db: ${err}`))
 }
 
 // exporting this db function to be imported into other files
