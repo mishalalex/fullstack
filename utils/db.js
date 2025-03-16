@@ -13,4 +13,5 @@ const db = () => {
         .catch((err) => console.log(`Error conncting to db: ${err}`))
 }
 
+// exporting this db function to be imported into other files
 export default db;

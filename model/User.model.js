@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+// declare the user schema for user
 const userSchema = new mongoose.Schema({
     "name": String,
     "email": String,
@@ -17,6 +18,7 @@ const userSchema = new mongoose.Schema({
     timestamps: true
 });
 
+// tell mongodb that for requests to 'users' collection use 'userSchema' to validate the structure
 const User = mongoose.model('User', userSchema);
 
 export default User;
