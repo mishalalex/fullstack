@@ -1,14 +1,22 @@
 {
   "name": "fullstack",
   "version": "1.0.0",
-  "description": "This is a simple fullstack application under development today",
   "main": "index.js",
-  "type": "module",
+  "description": "This is a simple fullstack application created to learn backend engineering with mongoDB",
   "scripts": {
     "dev": "nodemon index.js"
   },
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mishalalex/fullstack.git"
+  },
   "author": "Mishal Alexander",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mishalalex/fullstack/issues"
+  },
+  "homepage": "https://github.com/mishalalex/fullstack#readme",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
