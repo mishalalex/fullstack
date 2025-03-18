@@ -1,6 +1,8 @@
 import User from '../model/User.model.js';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
+import bcrypt from "bcryptjs";
+import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -11,7 +13,7 @@ const registerUser = async (req, res) => {
     const { name, email, password } = req.body;
     // verify whether the mandatory data is send by the user
     if (!name || !email || !password) {
-        res.status(400).json({
+        return res.status(400).json({
             message: "All fields are required."
         })
     }
@@ -21,7 +23,7 @@ const registerUser = async (req, res) => {
         const existingUser = await User.findOne({ email });
         // return the error message to user if the user already exists
         if (existingUser) {
-            res.status(400).json({
+            return res.status(400).json({
                 message: "User already exists. Please login."
             })
         }
@@ -34,7 +36,7 @@ const registerUser = async (req, res) => {
 
         // if something goes wrong, return an error to the user
         if (!newUser) {
-            res.status(500).json({
+            return res.status(500).json({
                 message: `User is not registered. Please contact admin.`
             });
         }
@@ -69,13 +71,13 @@ const registerUser = async (req, res) => {
         await transporter.sendMail(mailOptions);
 
         // once done, we can return the response to client stating the user is successfully registered
-        res.status(201).json({
+        return res.status(201).json({
             message: "User is successfully registered.",
             success: true
         })
 
     } catch (error) {
-        res.status(400).json({
+        return res.status(400).json({
             message: `Error occured while registering the user. Error: ${error}`
         });
     }
@@ -88,45 +90,115 @@ const verifyUser = async (req, res) => {
     const { token } = req.params;
     // verify whether a token is sent by the user
     if (!token) {
-        res.status(400).json({
+        return res.status(400).json({
             message: "Token is missing."
         })
     }
 
     try {
         // check whether the token sent by the user exists in our database
-        const verifyThisUser = await User.findOne({
+        const unverifiedUser = await User.findOne({
             verificationToken: token
         })
 
         // return an error response to the user if the token sent by the user doesn't exist in our database
-        if (!verifyThisUser) {
-            res.status(400).json({
+        if (!unverifiedUser) {
+            return res.status(400).json({
                 message: "Invalid token"
             })
         }
 
         // set the user as verified and delete the verification token from the user's data
-        verifyThisUser.isVerified = true;
-        verifyThisUser.verificationToken = null;
+        unverifiedUser.isVerified = true;
+        unverifiedUser.verificationToken = null;
 
         // save the above changes to the user
-        await verifyThisUser.save();
+        await unverifiedUser.save();
 
-        console.log(verifyThisUser)
+        console.log(`Unverified user - ${unverifiedUser.name} is verified now`);
 
         // once done, we can successfully tell the client that the user is verified
-        res.status(200).json({
+        return res.status(200).json({
             message: "User has been successfully verified. Please login to continue"
         })
 
 
     } catch (error) {
-        res.status(400).json({
+        return res.status(400).json({
             message: `Error occured while verifying the user. Error: ${error}`
         });
     }
 
 }
 
-export { registerUser, verifyUser };
+const loginUser = async (req, res) => {
+    // get the data from user
+    const { email, password } = req.body;
+
+    // validate whether the required data is in the request
+    if (!email || !password) {
+        return res.status(400).json({
+            message: "All the fields are required"
+        });
+    }
+
+    try {
+        // check whether a user exists with the given email id
+        const existingUser = await User.findOne({
+            email: email
+        })
+
+        // if user is not found then return error message to user
+        if (!existingUser) {
+            return res.status(400).json({
+                message: "Invalid email or password"
+            })
+        };
+
+        // using bcrypt.compare function, compare the password sent by the user and the one stored in database
+        const doesPasswordsMatch = await bcrypt.compare(password, existingUser.password);
+        console.log(password);
+        console.log(existingUser.password)
+        // if the hash doesn't match then return an error to the user (let's return invalid password for now)
+        if (!doesPasswordsMatch) {
+            return res.status(400).json({
+                message: "Invalid password"
+            });
+        }
+
+        // if the password is validated then create a JWT token ...
+        const jwt_token = jwt.sign({ id: existingUser }, process.env.JWT_SECRETKEY, {
+            expiresIn: process.env.JWT_EXPIRESIN
+        })
+
+        const cookieOptions = {
+            httpOnly: true,
+            secure: true,
+            maxAge: 24 * 60 * 60 * 1000
+        }
+
+        // ... and store it in user's cookies
+        res.cookie("cookie-token", jwt_token, cookieOptions);
+
+        // once everything is set, then return a success message to the user
+        return res.status(200).json({
+            message: "User is successfully logged in",
+            success: true,
+            jwt_token,
+            user: {
+                id: existingUser._id,
+                name: existingUser.name,
+                role: existingUser.role
+            }
+
+        })
+
+    } catch (error) {
+        // if any error is encountered while logging the user in, return appropriate error
+        return res.status(400).json({
+            message: `Error occured while logging the user in. Error: ${error}`
+        });
+    }
+}
+
+export { registerUser, verifyUser, loginUser };
