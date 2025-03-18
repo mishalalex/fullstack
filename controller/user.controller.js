@@ -143,25 +143,30 @@ const loginUser = async (req, res) => {
     }
 
     try {
+        // check whether a user exists with the given email id
         const existingUser = await User.findOne({
             email: email
         })
 
+        // if user is not found then return error message to user
         if (!existingUser) {
             return res.status(400).json({
                 message: "Invalid email or password"
             })
         };
 
+        // using bcrypt.compare function, compare the password sent by the user and the one stored in database
         const doesPasswordsMatch = await bcrypt.compare(password, existingUser.password);
         console.log(password);
         console.log(existingUser.password)
+        // if the hash doesn't match then return an error to the user (let's return invalid password for now)
         if (!doesPasswordsMatch) {
             return res.status(400).json({
                 message: "Invalid password"
             });
         }
 
+        // if the password is validated then create a JWT token ...
         const jwt_token = jwt.sign({ id: existingUser }, process.env.JWT_SECRETKEY, {
             expiresIn: process.env.JWT_EXPIRESIN
         })
@@ -172,8 +177,10 @@ const loginUser = async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000
         }
 
+        // ... and store it in user's cookies
         res.cookie("cookie-token", jwt_token, cookieOptions);
 
+        // once everything is set, then return a success message to the user
         return res.status(200).json({
             message: "User is successfully logged in",
             success: true,
@@ -185,10 +192,9 @@ const loginUser = async (req, res) => {
             }
 
         })
-        // hash the password that was sent and compare with the one in database
-        // if successful, then send a session token and update in the cookie
 
     } catch (error) {
+        // if any error is encountered while logging the user in, return appropriate error
         return res.status(400).json({
             message: `Error occured while logging the user in. Error: ${error}`
         });
