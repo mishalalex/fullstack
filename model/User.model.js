@@ -13,7 +13,13 @@ const userSchema = new mongoose.Schema({
     "isVerified": {
         type: String,
         default: false,
-    }
+    },
+    "verificationToken": {
+        type: String
+    },
+    "resetPasswordToken": {
+        type: String
+    },
 }, {
     timestamps: true
 });
