@@ -21,7 +21,7 @@ app.use(
         origin: 'http://127.0.0.1:3000',
         credentials: true,
         method: ['GET', 'POST', 'PUT', 'PATCH', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization']
+        allowedHeaders: ['Content-Type', 'Authorization', 'cookie']
     })
 );
 app.use(express.json());

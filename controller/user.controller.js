@@ -167,7 +167,7 @@ const loginUser = async (req, res) => {
         }
 
         // if the password is validated then create a JWT token ...
-        const jwt_token = jwt.sign({ id: existingUser }, process.env.JWT_SECRETKEY, {
+        const jwt_token = jwt.sign({ id: existingUser._id, role: existingUser.role }, process.env.JWT_SECRETKEY, {
             expiresIn: process.env.JWT_EXPIRESIN
         })
 
@@ -178,7 +178,7 @@ const loginUser = async (req, res) => {
         }
 
         // ... and store it in user's cookies
-        res.cookie("cookie-token", jwt_token, cookieOptions);
+        res.cookie("token", jwt_token, cookieOptions);
 
         // once everything is set, then return a success message to the user
         return res.status(200).json({
@@ -201,4 +201,146 @@ const loginUser = async (req, res) => {
     }
 }
 
-export { registerUser, verifyUser, loginUser };
+const getUserProfile = async (req, res) => {
+    const { id } = req.user;
+    try {
+        const existingUser = await User.findById(id).select('-password')
+        if (!existingUser) {
+            return res.status(400).json({
+                message: "user not found. you might want to login again"
+            })
+        }
+        return res.status(200).json({
+            success: true,
+            existingUser
+        })
+
+    } catch (err) {
+        return res.status(400).json({
+            success: false,
+            message: `Unable to get user's profile. Error: ${err}`
+        })
+
+    }
+
+}
+
+const logoutUser = async (req, res) => {
+    console.log("Reached controller")
+    try {
+        res.cookie('token', '', {})
+        return res.status(200).json({
+            message: "user logged out successfully"
+        })
+    } catch (error) {
+
+    }
+}
+
+const forgotPassword = async (req, res) => {
+    console.log("reached forgot password")
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({
+            message: "You'll need to send your registered email to reset your password."
+        })
+    }
+    console.log("email: ", email)
+    try {
+        const existingUser = await User.findOne({
+            email: email
+        })
+
+        if (!existingUser) {
+            return res.status(400).json({
+                message: "User with this email is not found. Please register or provide a registered email id to continue"
+            })
+        }
+
+        console.log("existing user found to reset password")
+        const resetToken = await crypto.randomBytes(32).toString("hex");
+        existingUser.resetPasswordToken = resetToken;
+        await existingUser.save();
+
+        // create the pre-requisites for sending email using nodemailer (will beautify this code later)
+        const transporter = nodemailer.createTransport({
+            host: process.env.MAILTRAP_HOST,
+            port: process.env.MAILTRAP_PORT,
+            secure: false, // true for port 465, false for other ports
+            auth: {
+                user: process.env.MAILTRAP_USERNAME,
+                pass: process.env.MAILTRAP_PASSWORD,
+            },
+        });
+
+        const mailOptions = {
+            from: process.env.MAILTRAP_EMAIL, // sender address
+            to: existingUser.email, // list of receivers
+            subject: "Did you request for a password reset?", // Subject line
+            text: `Please click on this link: ${process.env.BASE_URL}/api/v1/users/reset_password/${resetToken}`, // plain text body
+        }
+
+        // send the email to the user with the verification code
+        await transporter.sendMail(mailOptions);
+
+        // once done, we can return the response to client stating the user is successfully registered
+        return res.status(200).json({
+            message: "Process to reset your password has been initiated. Please check your email for further instructions.",
+            success: true
+        })
+    } catch (error) {
+        // once done, we can return the response to client stating the user is successfully registered
+        return res.status(400).json({
+            message: "Error while resetting your password. Contact administrator",
+            success: true
+        })
+    }
+}
+
+const resetPassword = async (req, res) => {
+    console.log("reached reset password")
+    const { token } = req.params;
+    const { new_password, confirm_new_password } = req.body
+    console.log(token)
+    if (!token || !new_password || !confirm_new_password) {
+        return res.status(400).json({
+            message: "All details are required"
+        })
+    }
+    if (new_password !== confirm_new_password) {
+        return res.status(400).json({
+            message: "Both the passwords must be the same. Try again"
+        })
+    }
+
+    try {
+        const existingUser = await User.findOne({
+            resetPasswordToken: token
+        })
+
+        if (!existingUser) {
+            return res.status(404).json({
+                message: "User not found"
+            })
+        }
+
+        existingUser.resetPasswordToken = undefined;
+        existingUser.password = confirm_new_password;
+        await existingUser.save()
+
+        return res.status(200).json({
+            message: "Your password has been reset. Please login to continue",
+            success: true
+        })
+
+
+    } catch (error) {
+        // once done, we can return the response to client stating the user is successfully registered
+        return res.status(400).json({
+            message: "Error while resetting your password. Contact administrator",
+            success: false
+        })
+    }
+}
+
+export { registerUser, verifyUser, loginUser, getUserProfile, logoutUser, forgotPassword, resetPassword };
